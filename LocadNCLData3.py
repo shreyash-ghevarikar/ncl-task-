@@ -1,15 +1,26 @@
-import mysql.connector 
+import mysql.connector
 from mysql.connector import Error
-
+import requests as req
 import urllib.request
+from ftplib import FTP
 
-def getFile(url, destination_file):
+def getFile(url, destination_file, username=None, password=None):
     try:
-        urllib.request.urlretrieve(url, destination_file)
+        with urllib.request.urlopen(url) as response, open(destination_file, 'wb') as file:
+            file.write(response.read())
         print(f"File downloaded successfully: {destination_file}")
     except Exception as e:
         print(f"Failed to fetch data from {url}: {e}")
 
+def ftpGetConnect(host, username, password):
+    try:
+        ftp = FTP(host)
+        ftp.login(username, password)
+        print(f"Connected to FTP server: {host}")
+        return ftp
+    except Exception as e:
+        print(f"Failed to connect to FTP server: {e}")
+        return None
 
 # Function to load data into ncl table
 def dataLoadNcl(mydb):
@@ -52,12 +63,19 @@ def dataLoadNclIt(mydb):
         mydb.commit()
         cursor.close()
         print("Data loaded into nclit table")
+    
 
 if __name__ == '__main__':
     try:
+        ftp_host = "ftp.ncl-europe.eu"
         ftp_username = "datafeed_it"
         ftp_password = "4Ftp@_it735"
-        # Create a MySQL connection
+
+        ftp_connection = ftpGetConnect(ftp_host, ftp_username, ftp_password)
+        if ftp_connection:
+            print("Connected to FTP server")
+
+       
         mydb = mysql.connector.connect(
             host="localhost",
             user="root",
@@ -67,20 +85,23 @@ if __name__ == '__main__':
         )
 
         if mydb.is_connected():
-            print("Successfully connected ")
+            print("Successfully connected to MySQL")
 
-            # Call functions to get file and load data
-            getFile("ftp://datafeed_it:4Ftp@_it735@ftp.ncl-europe.eu/ITALY.txt.Z", "./ITALY.txt")
-            dataLoadNcl(mydb)
+            
+            getFile("ftp://datafeed_it:4Ftp@_it735@ftp.ncl-europe.eu/ITALY.txt.Z", "./ITALY.txt","datafeed_it", "4Ftp@_it735")
+            # dataLoadNcl(mydb)
 
-            getFile("ftp://datafeed_it:4Ftp@_it735@ftp.ncl-europe.eu/ITALY_Itinerary.txt.Z", "./ITALY_Itinerary.txt")
-            dataLoadNclIt(mydb)
+            getFile("ftp://datafeed_it:4Ftp@_it735@ftp.ncl-europe.eu/ITALY_Itinerary.txt.Z", "./ITALY_Itinerary.txt", "datafeed_it", "4Ftp@_it735")
+            # dataLoadNclIt(mydb)
 
-            # Close the MySQL connection
+            ftp_connection.quit()
+            print("FTP Connection closed")
+
+          
             mydb.close()
-            print("Connection closed")
+            print("MySQL Connection closed")
     except Exception as e:
-      print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
 
 
  
